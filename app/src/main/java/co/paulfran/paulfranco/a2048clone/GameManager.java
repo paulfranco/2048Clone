@@ -3,23 +3,29 @@ package co.paulfran.paulfranco.a2048clone;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Path;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 import co.paulfran.paulfranco.a2048clone.sprites.Grid;
 
-public class GameManager extends SurfaceView implements SurfaceHolder.Callback{
+public class GameManager extends SurfaceView implements SurfaceHolder.Callback, SwipeCallback{
 
     private MainThread thread;
     private Grid grid;
     private int scWidth, scHeight, standardSize;
     private TileManager tileManager;
 
+    private SwipeListener swipe;
+
     public GameManager(Context context, AttributeSet attrs) {
         super(context, attrs);
+        setLongClickable(true);
         getHolder().addCallback(this);
+        swipe = new SwipeListener(getContext(), this);
 
         DisplayMetrics dm = new DisplayMetrics();
         ((Activity) context).getWindowManager().getDefaultDisplay().getMetrics(dm);
@@ -72,5 +78,16 @@ public class GameManager extends SurfaceView implements SurfaceHolder.Callback{
         // draw tiles on the canvas
         tileManager.draw(canvas);
 
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        swipe.onTouchEvent(event);
+        return super.onTouchEvent(event);
+    }
+
+    @Override
+    public void onSwipe(Direction direction) {
+        tileManager.onSwipe(direction);
     }
 }
