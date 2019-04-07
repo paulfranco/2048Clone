@@ -7,6 +7,7 @@ import android.graphics.Canvas;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Random;
 
 import co.paulfran.paulfranco.a2048clone.sprites.Sprite;
 import co.paulfran.paulfranco.a2048clone.sprites.Tile;
@@ -15,21 +16,26 @@ public class TileManager implements TileManagerCallback, Sprite{
 
     private Resources resources;
     private int standardSize, screenWidth, screenHeight;
-    private Tile t;
+    //private Tile t;
     private ArrayList<Integer> drawables = new ArrayList<>();
     private HashMap<Integer, Bitmap> tileBitmaps = new HashMap<>();
     private Tile[][] matrix = new Tile[4][4];
+    private boolean moving = false;
+    private ArrayList<Tile> movingTiles;
+    private boolean toSpawn = false;
+    private boolean endGame = false;
+    private GameManagerCallback callback;
 
 
-    public TileManager(Resources resources, int standardSize, int screenWidth, int screenHeight) {
+    public TileManager(Resources resources, int standardSize, int screenWidth, int screenHeight, GameManagerCallback callback) {
         this.resources = resources;
         this.standardSize = standardSize;
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
+        this.callback = callback;
         initBitmaps();
 
-        t = new Tile(standardSize, screenWidth, screenHeight, this, 1, 1);
-        matrix[1][1] = t;
+        initGame();
 
     }
 
@@ -60,6 +66,22 @@ public class TileManager implements TileManagerCallback, Sprite{
         }
     }
 
+    private void initGame() {
+        matrix = new Tile[4][4];
+        movingTiles = new ArrayList<>();
+
+        for (int i = 0; i < 2; i++) {
+            int x = new Random().nextInt(4);
+            int y = new Random().nextInt(4);
+            if (matrix[x][y] == null) {
+                Tile tile = new Tile(standardSize, screenWidth, screenHeight, this, x, y);
+                matrix[x][y] = tile;
+            } else {
+                i--;
+            }
+        }
+    }
+
     @Override
     public Bitmap getBitmap(int count) {
         return tileBitmaps.get(count);
@@ -67,28 +89,298 @@ public class TileManager implements TileManagerCallback, Sprite{
 
     @Override
     public void draw(Canvas canvas) {
-        t.draw(canvas);
+        //t.draw(canvas);
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                if (matrix[i][j] != null) {
+                    matrix[i][j].draw(canvas);
+                }
+            }
+        }
     }
 
     @Override
     public void update() {
-        t.update();
+        //t.update();
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                if (matrix[i][j] != null) {
+                    matrix[i][j].update();
+                }
+            }
+        }
     }
 
     public void onSwipe(SwipeCallback.Direction direction) {
-        switch (direction) {
-            case UP:
-                t.move(0,1);
-                break;
-            case DOWN:
-                t.move(3, 1);
-                break;
-            case LEFT:
-                t.move(1, 0);
-                break;
-            case RIGHT:
-                t.move(1, 3);
-                break;
+        if (!moving) {
+            moving = true;
+            Tile[][] newMatrix = new Tile[4][4];
+
+            switch (direction) {
+                case UP:
+                    for (int i = 0; i < 4; i++) {
+                        for (int j = 0; j < 4; j++) {
+                            if (matrix[i][j] != null) {
+                                newMatrix[i][j] = matrix[i][j];
+                                for (int k = i - 1; k >= 0; k--) {
+                                    if (newMatrix[k][j] == null) {
+                                        newMatrix[k][j] = matrix[i][j];
+                                        if (newMatrix[k+1][j] == matrix[i][j]) {
+                                            newMatrix[k+1][j] = null;
+                                        }
+                                    } else if (newMatrix[k][j].getValue() == matrix[i][j].getValue() && !newMatrix[k][j].toIncrement()) {
+                                        newMatrix[k][j] = matrix[i][j].increment();
+                                        if (newMatrix[k+1][j] == matrix[i][j]) {
+                                            newMatrix[k+1][j] = null;
+                                        }
+                                    } else {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    for (int i = 0; i < 4; i++) {
+                        for (int j = 0; j < 4; j++) {
+                            Tile t = matrix[i][j];
+                            Tile newT = null;
+                            int matrixX = 0;
+                            int matrixY = 0;
+
+                            for (int a = 0; a < 4; a++) {
+                                for (int b = 0; b < 4; b++) {
+                                    if (newMatrix[a][b] == t) {
+                                        newT = newMatrix[a][b];
+                                        matrixX = a;
+                                        matrixY = b;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (newT != null) {
+                                movingTiles.add(t);
+                                t.move(matrixX, matrixY);
+                            }
+                        }
+                    }
+                    break;
+                case DOWN:
+                    for (int i = 3; i >= 0; i--) {
+                        for (int j = 0; j < 4; j++) {
+                            if (matrix[i][j] != null) {
+                                newMatrix[i][j] = matrix[i][j];
+                                for (int k = i + 1; k < 4; k++) {
+                                    if (newMatrix[k][j] == null) {
+                                        newMatrix[k][j] = matrix[i][j];
+                                        if (newMatrix[k - 1][j] == matrix[i][j]) {
+                                            newMatrix[k - 1][j] = null;
+                                        }
+                                    } else if (newMatrix[k][j].getValue() == matrix[i][j].getValue() && !newMatrix[k][j].toIncrement()) {
+                                        newMatrix[k][j] = matrix[i][j].increment();
+                                        if (newMatrix[k - 1][j] == matrix[i][j]) {
+                                            newMatrix[k - 1][j] = null;
+                                        }
+                                    } else {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    for (int i = 3; i >= 0; i--) {
+                        for (int j = 0; j < 4; j++) {
+                            Tile t = matrix[i][j];
+                            Tile newT = null;
+                            int matrixX = 0;
+                            int matrixY = 0;
+                            for (int a = 0; a < 4; a++) {
+                                for (int b = 0; b < 4; b++) {
+                                    if (newMatrix[a][b] == t) {
+                                        newT = newMatrix[a][b];
+                                        matrixX = a;
+                                        matrixY = b;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (newT != null) {
+                                movingTiles.add(t);
+                                t.move(matrixX, matrixY);
+                            }
+                        }
+                    }
+                    break;
+                case LEFT:
+                    for (int i = 0; i < 4; i++) {
+                        for (int j = 0; j < 4; j++) {
+                            if (matrix[i][j] != null) {
+                                newMatrix[i][j] = matrix[i][j];
+                                for (int k = j - 1; k >= 0; k--) {
+                                    if (newMatrix[i][k] == null) {
+                                        newMatrix[i][k] = matrix[i][j];
+                                        if (newMatrix[i][k + 1] == matrix[i][j]) {
+                                            newMatrix[i][k + 1] = null;
+                                        }
+                                    } else if (newMatrix[i][k].getValue() == matrix[i][j].getValue() && !newMatrix[i][k].toIncrement()) {
+                                        newMatrix[i][k] = matrix[i][j].increment();
+                                        if (newMatrix[i][k + 1] == matrix[i][j]) {
+                                            newMatrix[i][k + 1] = null;
+                                        }
+                                    } else {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    for (int i = 0; i < 4; i++) {
+                        for (int j = 0; j < 4; j++) {
+                            Tile t = matrix[i][j];
+                            Tile newT = null;
+                            int matrixX = 0;
+                            int matrixY = 0;
+                            for (int a = 0; a < 4; a++) {
+                                for (int b = 0; b < 4; b++) {
+                                    if (newMatrix[a][b] == t) {
+                                        newT = newMatrix[a][b];
+                                        matrixX = a;
+                                        matrixY = b;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (newT != null) {
+                                movingTiles.add(t);
+                                t.move(matrixX, matrixY);
+                            }
+                        }
+                    }
+                    break;
+                case RIGHT:
+                    for (int i = 0; i < 4; i++) {
+                        for (int j = 3; j >= 0; j--) {
+                            if (matrix[i][j] != null) {
+                                newMatrix[i][j] = matrix[i][j];
+                                for (int k = j + 1; k < 4; k++) {
+                                    if (newMatrix[i][k] == null) {
+                                        newMatrix[i][k] = matrix[i][j];
+                                        if (newMatrix[i][k - 1] == matrix[i][j]) {
+                                            newMatrix[i][k - 1] = null;
+                                        }
+                                    } else if (newMatrix[i][k].getValue() == matrix[i][j].getValue() && !newMatrix[i][k].toIncrement()) {
+                                        newMatrix[i][k] = matrix[i][j].increment();
+                                        if (newMatrix[i][k - 1] == matrix[i][j]) {
+                                            newMatrix[i][k - 1] = null;
+                                        }
+                                    } else {
+                                        break;
+                                    }
+
+                                }
+                            }
+                        }
+                    }
+                    for (int i = 0; i < 4; i++) {
+                        for (int j = 3; j >= 0; j--) {
+                            Tile t = matrix[i][j];
+                            Tile newT = null;
+                            int matrixX = 0;
+                            int matrixY = 0;
+                            for (int a = 0; a < 4; a++) {
+                                for (int b = 0; b < 4; b++) {
+                                    if (newMatrix[a][b] == t) {
+                                        newT = newMatrix[a][b];
+                                        matrixX = a;
+                                        matrixY = b;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (newT != null) {
+                                movingTiles.add(t);
+                                t.move(matrixX, matrixY);
+                            }
+                        }
+                    }
+                    break;
+            }
+            // check if anything has moved to see if we need to spawn
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 4; j++) {
+                    if (newMatrix[i][j] != matrix[i][j]) {
+                        toSpawn = true;
+                        break;
+                    }
+                }
+            }
+            matrix = newMatrix;
         }
     }
+    @Override
+    public void finishedMoving(Tile t) {
+        movingTiles.remove(t);
+        if (movingTiles.isEmpty()) {
+            moving = false;
+            spawn();
+            checkEndgame();
+        }
+    }
+
+    private void checkEndgame() {
+        endGame = true;
+
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                if(matrix[i][j] == null) {
+                    endGame = false;
+                    break;
+                }
+            }
+        }
+
+        if(endGame) {
+
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 4; j++) {
+                    if((i > 0 && matrix[i-1][j].getValue() == matrix[i][j].getValue()) ||
+                            (i < 3 && matrix[i+1][j].getValue() == matrix[i][j].getValue()) ||
+                            (j > 0 && matrix[i][j-1].getValue() == matrix[i][j].getValue()) ||
+                            (j < 3 && matrix[i][j+1].getValue() == matrix[i][j].getValue())) {
+                        endGame = false;
+                    }
+                }
+            }
+        }
+    }
+
+    private void spawn() {
+        if (toSpawn) {
+            toSpawn = false;
+            Tile t = null;
+            // spawn in random location
+            while (t == null) {
+                int x = new Random().nextInt(4);
+                int y = new Random().nextInt(4);
+                // if position is empty
+                if (matrix[x][y] == null) {
+                    t = new Tile(standardSize, screenWidth, screenHeight, this, x, y);
+                    matrix[x][y] = t;
+                }
+            }
+        }
+    }
+
+    @Override
+    public void updateScore(int delta) {
+        callback.updateScore(delta);
+    }
+
+    @Override
+    public void reached2048() {
+        callback.reached2048();
+    }
+
+
 }
