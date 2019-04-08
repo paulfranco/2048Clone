@@ -62,6 +62,11 @@ public class Tile implements Sprite {
             if (increment) {
                 count++;
                 increment = false;
+                int amount = (int) Math.pow(2, count);
+                callback.updateScore(amount);
+                if (count == 11) {
+                    callback.reached2048();
+                }
             }
             callback.finishedMoving(this);
         }

@@ -45,6 +45,7 @@ public class Score implements Sprite {
         paint.setColor(Color.BLACK);
         paint.setStyle(Paint.Style.FILL);
         paint.setTextSize(resources.getDimension(R.dimen.score_text_size));
+
     }
 
     @Override

@@ -67,6 +67,7 @@ public class TileManager implements TileManagerCallback, Sprite{
     }
 
     public void initGame() {
+        endGame = false;
         matrix = new Tile[4][4];
         movingTiles = new ArrayList<>();
 
@@ -80,16 +81,6 @@ public class TileManager implements TileManagerCallback, Sprite{
                 i--;
             }
         }
-// To test the game over click functionality
-//        for (int i = 0; i < 4; i++) {
-//            for (int j = 0; j < 4; j++) {
-//                if(i != 3 || j != 3) {
-//                    Tile t = new Tile(standardSize, screeWidth, screenHeight, this, i, j, 3 * i + j + 4);
-//                    matrix[i][j] = t;
-//                }
-//            }
-//        }
-
     }
 
     @Override

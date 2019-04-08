@@ -3,6 +3,7 @@ package co.paulfran.paulfranco.a2048clone;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Path;
 import android.util.AttributeSet;
@@ -10,6 +11,10 @@ import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+
+import com.google.android.gms.ads.AdListener;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.InterstitialAd;
 
 import co.paulfran.paulfranco.a2048clone.sprites.EndGame;
 import co.paulfran.paulfranco.a2048clone.sprites.Grid;
@@ -30,12 +35,17 @@ public class GameManager extends SurfaceView implements SurfaceHolder.Callback, 
     private int restartButtonX, restartButtonY, restartButtonSize;
 
     private SwipeListener swipe;
-    //private InterstitialAd interstitialAd;
+    private InterstitialAd interstitialAd;
     private boolean interstitialShown = false;
 
     public GameManager(Context context, AttributeSet attrs) {
         super(context, attrs);
         setLongClickable(true);
+
+        interstitialAd = new InterstitialAd(getContext());
+        // id specific to this ad
+        interstitialAd.setAdUnitId("ca-app-pub-3940256099942544/1033173712");
+
         getHolder().addCallback(this);
         swipe = new SwipeListener(getContext(), this);
 
@@ -49,6 +59,13 @@ public class GameManager extends SurfaceView implements SurfaceHolder.Callback, 
         grid = new Grid(getResources(), scWidth, scHeight, standardSize);
         tileManager = new TileManager(getResources(), standardSize, scWidth, scHeight, this);
         endgameSprite = new EndGame(getResources(), scWidth, scHeight);
+        score = new Score(getResources(), scWidth, scHeight, standardSize, getContext().getSharedPreferences(APP_NAME, Context.MODE_PRIVATE));
+
+        restartButtonSize = (int) getResources().getDimension(R.dimen.restart_button_size);
+        Bitmap bmpRestart = BitmapFactory.decodeResource(getResources(), R.drawable.restart);
+        restartButton = Bitmap.createScaledBitmap(bmpRestart, restartButtonSize, restartButtonSize, false);
+        restartButtonX = scWidth / 2 + 2 * standardSize - restartButtonSize;
+        restartButtonY = scHeight / 2 - 2 * standardSize - 3 * restartButtonSize / 2;
     }
 
     public void initGame() {
@@ -99,6 +116,8 @@ public class GameManager extends SurfaceView implements SurfaceHolder.Callback, 
         grid.draw(canvas);
         // draw tiles on the canvas
         tileManager.draw(canvas);
+        score.draw(canvas);
+        canvas.drawBitmap(restartButton, restartButtonX, restartButtonY, null);
         if (endGame) {
             endgameSprite.draw(canvas);
         }
@@ -132,16 +151,36 @@ public class GameManager extends SurfaceView implements SurfaceHolder.Callback, 
 
     @Override
     public void gameOver() {
-
+        endGame = true;
+        if(endGame && !interstitialShown) {
+            interstitialShown = true;
+            loadInterstitialAd();
+        }
     }
 
     @Override
     public void updateScore(int delta) {
-
+        score.updateScore(delta);
     }
 
     @Override
     public void reached2048() {
-        endGame = true;
+        score.reached2048();
+    }
+
+    public void loadInterstitialAd() {
+        ((Activity) getContext()).runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                interstitialAd.loadAd(new AdRequest.Builder().build());
+                interstitialAd.setAdListener(new AdListener() {
+                    @Override
+                    public void onAdLoaded() {
+                        super.onAdLoaded();
+                        interstitialAd.show();
+                    }
+                });
+            }
+        });
     }
 }
